@@ -30,6 +30,13 @@ CREATE TABLE `Ship` (
 	FOREIGN KEY(`hauler_id`) REFERENCES `Hauler`(`id`)
 );
 
+CREATE TABLE 'Ship' (
+	'id'	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	'name' TEXT NOT NULL,
+	'hauler_id' INTEGER NOT NULL,
+	FOREIGN KEY('hauler_id') REFERENCES 'Hauler'('id')
+)
+
 INSERT INTO `Dock` VALUES (null, 'Antwerp', 1290);
 INSERT INTO `Dock` VALUES (null, 'Shanghai', 840);
 INSERT INTO `Dock` VALUES (null, 'Los Angeles', 1055);

@@ -35,51 +35,144 @@ def delete_ship(pk):
     return True if number_of_rows_deleted > 0 else False
 
 
-def list_ships():
+def list_ships(url_dict):
     # Open a connection to the database
     with sqlite3.connect("./shipping.db") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
-        # Write the SQL query to get the information you want
-        db_cursor.execute("""
-        SELECT
-            s.id,
-            s.name,
-            s.hauler_id
-        FROM Ship s
-        """)
-        query_results = db_cursor.fetchall()
+        if url_dict['query_params'] == 'hauler':
+            db_cursor.execute(
+                """
+                    SELECT
+                        s.id,
+                        s.name,
+                        s.hauler_id,
+                        h.id haulerId,
+                        h.name haulerName,
+                        h.dock_id
+                    FROM Ship s
+                    JOIN Hauler h
+                        ON h.id = s.hauler_id
+                """
+            )
 
-        # Initialize an empty list and then add each dictionary to it
-        ships=[]
-        for row in query_results:
-            ships.append(dict(row))
+            query_results = db_cursor.fetchall()
 
-        # Serialize Python list to JSON encoded string
-        serialized_ships = json.dumps(ships)
+            ships = []
+
+            for row in query_results:
+                hauler = {
+                    "id": row['haulerId'],
+                    "name": row['haulerName'],
+                    "dock_id": row['dock_id']
+                }
+                ship = {
+                    "id": row['id'],
+                    "name": row['name'],
+                    "hauler": hauler
+                }
+                ships.append(ship)
+            
+            serialized_ships = json.dumps(ships)
+
+            return serialized_ships
+
+        else:
+            # Write the SQL query to get the information you want
+            db_cursor.execute("""
+            SELECT
+                s.id,
+                s.name,
+                s.hauler_id
+            FROM Ship s
+            """)
+            query_results = db_cursor.fetchall()
+
+            # Initialize an empty list and then add each dictionary to it
+            ships=[]
+            for row in query_results:
+                ships.append(dict(row))
+
+            # Serialize Python list to JSON encoded string
+            serialized_ships = json.dumps(ships)
+            print(serialized_ships)
 
     return serialized_ships
 
-def retrieve_ship(pk):
+def retrieve_ship(url):
     # Open a connection to the database
     with sqlite3.connect("./shipping.db") as conn:
         conn.row_factory = sqlite3.Row
         db_cursor = conn.cursor()
 
-        # Write the SQL query to get the information you want
+        if not url['query_params']:
+            # Write the SQL query to get the information you want
+            db_cursor.execute("""
+            SELECT
+                s.id,
+                s.name,
+                s.hauler_id
+            FROM Ship s
+            WHERE s.id = ?
+            """, (url['pk'],))
+            query_results = db_cursor.fetchone()
+
+            # Serialize Python list to JSON encoded string
+            dictionary_version_of_object = dict(query_results)
+            serialized_ship = json.dumps(dictionary_version_of_object)
+
+            return serialized_ship
+        
+        elif 'hauler' in url['query_params']['_expand']:
+                db_cursor.execute(
+                """
+                    SELECT
+                        s.id,
+                        s.name,
+                        s.hauler_id,
+                        h.id haulerId,
+                        h.name haulerName,
+                        h.dock_id
+                    FROM Ship s
+                    JOIN Hauler h
+                        ON s.hauler_id = haulerId
+                    WHERE s.id = ?
+                """,
+                (url['pk'],)
+                )
+                query_results = db_cursor.fetchone()
+                
+                row = dict(query_results)
+                hauler = {
+                    "id": row['haulerId'],
+                    "name": row['haulerName'],
+                    "dock_id": row['dock_id']
+                }
+                ship = {
+                    'id': row['id'],
+                    'name': row['name'],
+                    'hauler_id': row['hauler_id'],
+                    'hauler': hauler
+                }
+                
+                serialized_ship = json.dumps(ship)
+
+                return serialized_ship
+            
+
+def create_ship(ship_data):
+    with sqlite3.connect("./shipping.db") as conn:
+        conn.row_factory = sqlite3.Row
+        db_cursor = conn.cursor()
+
         db_cursor.execute("""
-        SELECT
-            s.id,
-            s.name,
-            s.hauler_id
-        FROM Ship s
-        WHERE s.id = ?
-        """, (pk,))
-        query_results = db_cursor.fetchone()
+        INSERT INTO Ship (name, hauler_id)
+        VALUES (?, ?)
+        """,
+        (ship_data['name'], ship_data['hauler_id'])
+        )
+        
+        rows_affected = db_cursor.rowcount
 
-        # Serialize Python list to JSON encoded string
-        dictionary_version_of_object = dict(query_results)
-        serialized_ship = json.dumps(dictionary_version_of_object)
-
-    return serialized_ship
+    return True if rows_affected > 0 else False

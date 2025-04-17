@@ -15,7 +15,6 @@ def update_dock(id, dock_data):
             """,
             (dock_data['location'], dock_data['capacity'], id)
         )
-
     return True if db_cursor.rowcount > 0 else False
 
 def delete_dock(pk):
@@ -80,3 +79,18 @@ def retrieve_dock(pk):
         serialized_dock = json.dumps(dict(query_results))
 
     return serialized_dock
+
+def create_dock(dock_data):
+    with sqlite3.connect("./shipping.db") as conn:
+        db_cursor = conn.cursor()
+
+        db_cursor.execute("""
+            INSERT INTO Dock (location, capacity)
+            VALUES (?, ?)
+        """,
+        (dock_data['location'], dock_data['capacity'])
+        )
+
+        rows_affected = db_cursor.rowcount
+
+    return True if rows_affected > 0 else False
